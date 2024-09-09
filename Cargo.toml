@@ -20,6 +20,9 @@ wasm-bindgen = "=0.2.93"
 thiserror = "1"
 tracing = { version = "0.1", optional = true }
 http = "1"
+# leptos-use = { version="0.14.0-beta" }
+leptos-use = { git = "https://github.com/BakerNet/leptos-use", branch = "fix/notify-from-trigger" } # temporary until leptos-use pushes `-beta2` with notify fix
+codee = "0.2"
 
 [features]
 hydrate = ["leptos/hydrate"]

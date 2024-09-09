@@ -1,9 +1,11 @@
-use leptos::{html::Div, prelude::*};
+use codee::string::FromToStringCodec;
+use leptos::{html::Div, logging::log, prelude::*};
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment,
 };
+use leptos_use::{use_websocket, UseWebSocketReturn};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -51,6 +53,7 @@ pub fn App() -> impl IntoView {
 
 #[server]
 pub async fn get_thing(thing: ()) -> Result<(), ServerFnError> {
+    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
     Ok(thing)
 }
 
@@ -63,7 +66,7 @@ fn OtherPage(count: RwSignal<usize>) -> impl IntoView {
         // get_untracked will only be Some on the hydration, not on CSR route
         if let Some(div) = div_ref.get_untracked() {
             div.set_text_content(Some(&format!(
-                "Frontend rendered {} times (for showing hydration difference)",
+                "Frontend Suspend rendered {} times",
                 count.get_untracked()
             )));
         }
@@ -73,15 +76,32 @@ fn OtherPage(count: RwSignal<usize>) -> impl IntoView {
         <Suspense fallback=move || view!{<div>"Loading"</div>}>
             {move || {
                 Suspend::new(async move {
-                    count.update_untracked(|x| *x += 1);
                     let _ = resource.await;
-                    view!{<div>{format!("OtherPage has been rendered {} times", count.get_untracked())}</div>}
+                    count.update_untracked(|x| *x += 1);
+                    view!{<OtherInner count />}
                 })
             }}
         </Suspense>
         <div node_ref=div_ref></div>
         <a href="/">"Home"</a>
     }
+}
+
+#[component]
+fn OtherInner(count: RwSignal<usize>) -> impl IntoView {
+    log!("rendering OtherInner");
+    let UseWebSocketReturn { ready_state, .. } =
+        use_websocket::<String, String, FromToStringCodec>("wss://echo.websocket.org/");
+
+    Effect::watch(
+        move || ready_state.get(),
+        move |state, _, _| {
+            log!("State: {:?}", state);
+        },
+        true,
+    );
+
+    view! {<div>{format!("OtherPage Suspend has been rendered {} times", count.get_untracked())}</div>}
 }
 
 /// Renders the home page of your application.
