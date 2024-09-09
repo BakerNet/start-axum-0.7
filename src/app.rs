@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+use leptos::{html::Div, prelude::*};
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -57,17 +57,29 @@ pub async fn get_thing(thing: ()) -> Result<(), ServerFnError> {
 #[component]
 fn OtherPage(count: RwSignal<usize>) -> impl IntoView {
     let resource = Resource::new(|| (), get_thing);
+    let div_ref = NodeRef::<Div>::new();
+
+    Effect::new(move || {
+        // get_untracked will only be Some on the hydration, not on CSR route
+        if let Some(div) = div_ref.get_untracked() {
+            div.set_text_content(Some(&format!(
+                "Frontend rendered {} times (for showing hydration difference)",
+                count.get_untracked()
+            )));
+        }
+    });
+
     view! {
         <Suspense fallback=move || view!{<div>"Loading"</div>}>
             {move || {
                 Suspend::new(async move {
                     count.update_untracked(|x| *x += 1);
-                    log::debug!("In Suspend - called {} times", count.get_untracked());
                     let _ = resource.await;
-                    view!{<div>"Loaded"</div>}
+                    view!{<div>{format!("OtherPage has been rendered {} times", count.get_untracked())}</div>}
                 })
             }}
         </Suspense>
+        <div node_ref=div_ref></div>
         <a href="/">"Home"</a>
     }
 }
